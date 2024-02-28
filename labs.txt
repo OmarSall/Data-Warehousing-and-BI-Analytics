@@ -1,0 +1,177 @@
+start_postgres
+
+createdb -h 'it can be localhost' -U ' user name - it can be -> postgres' -p 5432 billingDW
+
+In the above command
+
+-h mentions that the database server is running on the localhost
+-U mentions that we are using the user name postgres to log into the database
+-p mentions that the database server is running on port number 5432
+
+
+create schema
+
+psql  -h 'it can be localhost' -U  'user name - it can be -> postgres' -p 5432 billingDW < star-schema.sql
+
+-----------------------LAB 2--------------------------
+start_postgres
+
+createdb -h ' can be 'localhost'' -U 'can be 'postgres'' -p 5432 billingDW
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Setting%20up%20a%20staging%20area/billing-datawarehouse.tgz
+
+tar -xvzf billing-datawarehouse.tgz
+
+psql  -h ' can be 'localhost'' -U 'can be 'postgres'' -p 5432 billingDW < star-schema.sql
+
+psql   -h ' can be 'localhost'' -U 'can be 'postgres'' -p 5432 billingDW < DimCustomer.sql
+ ------------------------------LAB3-------------------------
+
+start_postgres
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Verifying%20Data%20Quality%20for%20a%20Data%20Warehouse/setup_staging_area.sh
+
+bash setup_staging_area.sh
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Verifying%20Data%20Quality%20for%20a%20Data%20Warehouse/dataqualitychecks.py
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Verifying%20Data%20Quality%20for%20a%20Data%20Warehouse/dbconnect.py
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Verifying%20Data%20Quality%20for%20a%20Data%20Warehouse/mytests.py
+
+wget https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DB0260EN-SkillsNetwork/labs/Verifying%20Data%20Quality%20for%20a%20Data%20Warehouse/generate-data-quality-report.py
+
+ls
+
+python3 -m pip install psycopg2
+
+python3 dbconnect.py
+
+python3 -m pip install pandas tabulate
+
+python3 generate-data-quality-report.py
+
+
+------------------LAB4---------------------------------------
+
+
+CREATE MATERIALIZED VIEW  avg_customer_bill (customerid, averagebillamount) AS
+(select customerid, avg(billedamount)
+from public."FactBilling"
+group by customerid
+);
+
+
+REFRESH MATERIALIZED VIEW avg_customer_bill;
+
+
+------------------Lab5--------------------------
+
+select year,category, sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by grouping sets(year, category); 
+
+
+select year,category, sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by rollup(year,category)
+order by year, category;
+
+
+select year,category, sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by cube(year,category)
+order by year, category;
+
+
+CREATE MATERIALIZED VIEW countrystats (country, year, totalbilledamount) AS
+(select country, year, sum(billedamount)
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by country,year);
+
+REFRESH MATERIALIZED VIEW countrystats;
+
+select * from countrystats;
+
+
+select year, quartername, sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by grouping sets(year, quartername);
+
+select year, quartername,  sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by rollup(year, quartername)
+order by year, quartername;
+
+select year, quartername, sum(billedamount) as totalbilledamount
+from "FactBilling"
+left join "DimCustomer"
+on "FactBilling".customerid = "DimCustomer".customerid
+left join "DimMonth"
+on "FactBilling".monthid="DimMonth".monthid
+group by cube(year,quartername);
+
+
+CREATE MATERIALIZED VIEW average_billamount (year,quarter,category,country, average_bill_amount) AS
+    (select   year,quarter,category,country, avg(billedamount) as average_bill_amount
+    from "FactBilling"
+    left join  "DimCustomer"
+    on "FactBilling".customerid =  "DimCustomer".customerid
+    left join "DimMonth"
+    on "FactBilling".monthid="DimMonth".monthid
+    group by year,quarter,category,country
+    );
+
+refresh MATERIALIZED VIEW average_billamount;
+
+
+-----------------------FINAL ASSIGNEMENT-----------------------
+
+
+CREATE TABLE "MyDimDate"(dateid integer NOT NULL SERIAL PRIMARY KEY,
+			date DATE NOT NULL,
+			year integer NOT NULL,
+			month integer NOT NULL,
+			monthname varchar(10) NOT NULL,
+			day integer NOT NULL,
+			weekday integer NOT NULL,
+			quarter integer NOT NULL,
+			quartername varchar(2) NOT NULL);
+
+CREATE TABLE "MyDimWaste"(wasteid integer NOT NULL SERIAL PRIMARY KEY,
+			waste_type varchar(50) NOT NULL,
+			waste_collected_in_tons float NOT NULL);
+			
+CREATE TABLE "MyDimZone"(zoneid integer NOT NULL SERIAL PRIMARY KEY,
+			collection_zone varchar(30) NOT NULL,
+			city varchar(50) NOT NULL);
+			
+CREATE TABLE "MyFactTrips"(trip_number integer NOT NULL SERIAL PRIMARY KEY,
+			FOREIGN KEY (dateid) REFERENCES "MyDimDate" (dateid),
+			FOREIGN KEY (wasteid) REFERENCES "MyDimWaste" (wasteid),
+			FOREIGN KEY (zoneid) REFERENCES "MyDimZone" (zoneid));
+			
